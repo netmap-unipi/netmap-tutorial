@@ -57,8 +57,32 @@ udp_port_match(const char *buf, unsigned len, int udp_port)
 static int
 main_loop(const char *netmap_port, int udp_port)
 {
+    struct nm_desc *nmd;
+
+    nmd = nm_open(netmap_port, NULL, 0, NULL);
+    /* check for errors */
 
     while (!stop) {
+       int r;
+       /* for each ring index from nmd->first_rx_ring to
+        * nmd->last_rx_ring (included)
+        */
+       /* synchronize! */
+       ioctl(nmd->fd, NIOCRXSYNC);
+       for (r = nmd->first_rx_ring; r <= nmd->last_rx_ring; r++) {
+           struct netmap_ring *ring = NETMAP_RXRING(nifp, r);
+       
+           /* for each packet from ring->head to ring->tail
+            * (excluded) */
+           for ( ; ring->head != ring->tail;
+                ring->head = nm_ring_next(ring, ring->head)) {
+                struct netmap_slot *slot = &ring->slot[ring->head];
+                void *buf = NETMAP_BUF(ring, slot->buf_idx);
+	       /* count if match */
+	   }
+	   /* update ring->head and ring->cur */
+	   ring->cur = ring->head;
+       }
     }
 
 
