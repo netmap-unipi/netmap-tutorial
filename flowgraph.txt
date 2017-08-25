@@ -1,0 +1,19 @@
+================== NFV graph definition ==================
+
+   GEN1 -----> FE -----> SWAP1 ----> SINK1
+                |
+                -------> SWAP1 ----> SINK2
+
+GEN1 = pkt-gen generating UDP packets with dst port range 8000-8004
+       and src port range 7000-7010;
+FE   = packets belonging to port 8000 are forwarded to SWAP1, while
+       packets belonging to port 8001 are forwarded to SWAP2; all
+       the other packets are dropped;
+SWAP = swaps UDP source and destination ports and forwards
+SINK = counts the number of packets received on a given UDP port.
+       SINK1 counts the number of packets received on port 7000,
+       while SINK2 counts the number of packets received ont port
+       7001.
+
+SINK1 and SWAP2 run in a VM, while GEN1, FE, SWAP1 and SINK2 run
+on the host.
