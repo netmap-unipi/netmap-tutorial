@@ -1,0 +1,36 @@
+git clone https://github.com/luigirizzo/netmap
+
+cd netmap
+./configure --no-drivers --enable-ptnetmap
+make
+sudo make install install-apps
+sudo depmod -a
+sudo modprobe netmap
+
+
+For the examples:
+
+git clone https://github.com/vmaffione/netmap-tutorial
+
+Exercise 1:
+  $ sudo pkt-gen -i vale:x -f tx -d 10.0.0.1:8000-10.0.0.1:8005
+  $ sudo ./sink -i vale:y -p 8000
+  
+Exercise 2:
+  $ sudo pkt-gen -i vale0:0 -f tx -d 10.0.0.1:8000-10.0.0.1:8005
+  $ sudo ./forward -i vale0:1 -i vale1:1 -p 8000
+  $ sudo pkt-gen -i vale1:0 -f rx
+
+
+              +-----+                   +-----+
+ pkt-gen --> 0|vale0|1 --> forward --> 1|vale1|0 --> pkt-gen
+              +-----+                   +-----+
+
+
+
+
+
+
+
+
+
