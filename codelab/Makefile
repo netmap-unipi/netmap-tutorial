@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -g -Werror -DSOLUTION
-PROGS=sink
+PROGS=sink forward swap fe
 
 all: $(PROGS)
 
