@@ -217,5 +217,7 @@ main(int argc, char **argv)
 
     main_loop(netmap_port_one, netmap_port_two, udp_port);
 
+    (void)pkt_select; /* silence the compiler */
+
     return 0;
 }

@@ -69,10 +69,10 @@ pkt_udp_port_swap(char *buf)
         /* Filter out non-UDP traffic. */
         return 0;
     }
-    udph         = (struct udphdr *)(iph + 1);
-    tmp          = udph->uh_sport;
+    udph           = (struct udphdr *)(iph + 1);
+    tmp            = udph->uh_sport;
     udph->uh_sport = udph->uh_dport;
-    udph->uh_dport   = tmp;
+    udph->uh_dport = tmp;
 
     return 1;
 }

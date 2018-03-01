@@ -21,7 +21,6 @@
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 
-
 static int stop = 0;
 
 static void
@@ -61,7 +60,6 @@ static int
 main_loop(const char *netmap_port, int udp_port)
 {
     while (!stop) {
-	(void)udp_port_match; /* silence the compiler */
     }
 
     return 0;
@@ -127,6 +125,8 @@ main(int argc, char **argv)
     printf("UDP port: %d\n", udp_port);
 
     main_loop(netmap_port, udp_port);
+
+    (void)udp_port_match; /* silence the compiler */
 
     return 0;
 }
