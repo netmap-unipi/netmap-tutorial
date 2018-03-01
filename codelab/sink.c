@@ -14,6 +14,7 @@
 #include <net/netmap.h>
 #define NETMAP_WITH_LIBS
 #include <net/netmap_user.h>
+#include <sys/socket.h>
 #include <netinet/if_ether.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
