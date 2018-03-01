@@ -61,6 +61,7 @@ static int
 main_loop(const char *netmap_port, int udp_port)
 {
     while (!stop) {
+	(void)udp_port_match; /* silence the compiler */
     }
 
     return 0;
