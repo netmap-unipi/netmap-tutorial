@@ -280,7 +280,7 @@ main(int argc, char **argv)
     main_loop(netmap_port_one, netmap_port_two, netmap_port_three, udp_port_a,
               udp_port_b);
 
-    (void) pkt_get_udp_port;
+    (void)pkt_get_udp_port;
 
     return 0;
 }

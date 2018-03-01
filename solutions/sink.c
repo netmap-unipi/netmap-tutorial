@@ -69,8 +69,7 @@ main_loop(const char *netmap_port, int udp_port)
         if (!errno) {
             printf("Failed to nm_open(%s): not a netmap port\n", netmap_port);
         } else {
-            printf("Failed to nm_open(%s): %s\n", netmap_port,
-                   strerror(errno));
+            printf("Failed to nm_open(%s): %s\n", netmap_port, strerror(errno));
         }
         return -1;
     }
@@ -82,7 +81,7 @@ main_loop(const char *netmap_port, int udp_port)
         unsigned int ri;
         int ret;
 
-        pfd[0].fd = nmd->fd;
+        pfd[0].fd     = nmd->fd;
         pfd[0].events = POLLIN;
 
         /* We poll with a timeout to have a chance to break the main loop if
@@ -96,25 +95,25 @@ main_loop(const char *netmap_port, int udp_port)
         }
 
         /* Scan all the receive rings. */
-        for (ri = nmd->first_rx_ring; ri <= nmd->last_rx_ring; ri ++) {
+        for (ri = nmd->first_rx_ring; ri <= nmd->last_rx_ring; ri++) {
             struct netmap_ring *rxring;
             unsigned head, tail;
             int batch;
 
             rxring = NETMAP_RXRING(nmd->nifp, ri);
-            head = rxring->head;
-            tail = rxring->tail;
-            batch = tail - head;
+            head   = rxring->head;
+            tail   = rxring->tail;
+            batch  = tail - head;
             if (batch < 0) {
                 batch += rxring->num_slots;
             }
             tot += batch;
             for (; head != tail; head = nm_ring_next(rxring, head)) {
                 struct netmap_slot *slot = rxring->slot + head;
-                char *buf = NETMAP_BUF(rxring, slot->buf_idx);
+                char *buf                = NETMAP_BUF(rxring, slot->buf_idx);
 
                 if (udp_port_match(buf, slot->len, udp_port)) {
-                    cnt ++;
+                    cnt++;
                 }
             }
             rxring->cur = rxring->head = head;

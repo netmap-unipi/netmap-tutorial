@@ -88,7 +88,7 @@ pkt_copy_or_drop(struct nm_desc *dst, const char *buf, unsigned len)
 
         if (nm_ring_space(txring)) {
             struct netmap_slot *ts = &txring->slot[txring->head];
-            char *txbuf = NETMAP_BUF(txring, ts->buf_idx);
+            char *txbuf            = NETMAP_BUF(txring, ts->buf_idx);
 
             ts->len = len;
             memcpy(txbuf, buf, len);
@@ -112,26 +112,26 @@ route_forward(struct nm_desc *one, struct nm_desc *two, struct nm_desc *three,
         int nrx;
 
         rxring = NETMAP_RXRING(one->nifp, si);
-        nrx = nm_ring_space(rxring);
+        nrx    = nm_ring_space(rxring);
         if (nrx == 0) {
             si++;
             continue;
         }
 
-	rxhead = rxring->head;
+        rxhead = rxring->head;
         for (; nrx > 0; nrx--, rxhead = nm_ring_next(rxring, rxhead)) {
             struct netmap_slot *rs = &rxring->slot[rxhead];
-            char *rxbuf = NETMAP_BUF(rxring, rs->buf_idx);
-            int udp_port = pkt_get_udp_port(rxbuf);
+            char *rxbuf            = NETMAP_BUF(rxring, rs->buf_idx);
+            int udp_port           = pkt_get_udp_port(rxbuf);
 
             if (udp_port == udp_port_a) {
                 fwda += pkt_copy_or_drop(two, rxbuf, rs->len);
             } else if (udp_port == udp_port_b) {
                 fwdb += pkt_copy_or_drop(three, rxbuf, rs->len);
             }
-            tot ++;
+            tot++;
         }
-	rxring->head = rxring->cur = rxhead;
+        rxring->head = rxring->cur = rxhead;
     }
 }
 #endif /* SOLUTION */
@@ -233,9 +233,9 @@ main_loop(const char *netmap_port_one, const char *netmap_port_two,
         int ret;
         int two_ready, three_ready;
 
-        pfd[0].fd = nmd_one->fd;
-        pfd[1].fd = nmd_two->fd;
-        pfd[2].fd = nmd_three->fd;
+        pfd[0].fd     = nmd_one->fd;
+        pfd[1].fd     = nmd_two->fd;
+        pfd[2].fd     = nmd_three->fd;
         pfd[0].events = POLLIN;
         pfd[1].events = 0;
         pfd[2].events = 0;
@@ -244,7 +244,7 @@ main_loop(const char *netmap_port_one, const char *netmap_port_two,
          * line blocking (we don't know in advance which packets are going to
          * be forwarded where). As a result, unfortunately, we may end dropping
          * packets. */
-        two_ready = rx_ready(nmd_two);
+        two_ready   = rx_ready(nmd_two);
         three_ready = rx_ready(nmd_three);
         if (!two_ready) {
             pfd[1].events |= POLLIN;
@@ -270,8 +270,7 @@ main_loop(const char *netmap_port_one, const char *netmap_port_two,
         }
 
         /* Route and forward from port one to ports two and three. */
-        route_forward(nmd_one, nmd_two, nmd_three, udp_port_a,
-                      udp_port_b);
+        route_forward(nmd_one, nmd_two, nmd_three, udp_port_a, udp_port_b);
 #endif /* SOLUTION */
 
         /* Forward traffic from ports two and three back to port one. */
@@ -385,7 +384,7 @@ main(int argc, char **argv)
     main_loop(netmap_port_one, netmap_port_two, netmap_port_three, udp_port_a,
               udp_port_b);
 
-    (void) pkt_get_udp_port;
+    (void)pkt_get_udp_port;
 
     return 0;
 }

@@ -92,8 +92,8 @@ swap_and_forward(struct nm_desc *src, struct nm_desc *dst, int zerocopy)
 
         rxring = NETMAP_RXRING(src->nifp, si);
         txring = NETMAP_TXRING(dst->nifp, di);
-        nrx = nm_ring_space(rxring);
-        ntx = nm_ring_space(txring);
+        nrx    = nm_ring_space(rxring);
+        ntx    = nm_ring_space(txring);
         if (nrx == 0) {
             si++;
             continue;
@@ -103,9 +103,9 @@ swap_and_forward(struct nm_desc *src, struct nm_desc *dst, int zerocopy)
             continue;
         }
 
-	rxhead = rxring->head;
-	txhead = txring->head;
-	for (; nrx > 0 && ntx > 0; nrx--, ntx--, tot++) {
+        rxhead = rxring->head;
+        txhead = txring->head;
+        for (; nrx > 0 && ntx > 0; nrx--, ntx--, tot++) {
             struct netmap_slot *rs = &rxring->slot[rxhead];
             struct netmap_slot *ts = &txring->slot[txhead];
             char *txbuf;
@@ -113,15 +113,15 @@ swap_and_forward(struct nm_desc *src, struct nm_desc *dst, int zerocopy)
             ts->len = rs->len;
             if (zerocopy) {
                 uint32_t idx = ts->buf_idx;
-                ts->buf_idx = rs->buf_idx;
-                rs->buf_idx = idx;
+                ts->buf_idx  = rs->buf_idx;
+                rs->buf_idx  = idx;
                 /* report the buffer change. */
                 ts->flags |= NS_BUF_CHANGED;
                 rs->flags |= NS_BUF_CHANGED;
                 txbuf = NETMAP_BUF(txring, ts->buf_idx);
             } else {
                 char *rxbuf = NETMAP_BUF(rxring, rs->buf_idx);
-                txbuf = NETMAP_BUF(txring, ts->buf_idx);
+                txbuf       = NETMAP_BUF(txring, ts->buf_idx);
                 memcpy(txbuf, rxbuf, ts->len);
             }
 
@@ -130,8 +130,8 @@ swap_and_forward(struct nm_desc *src, struct nm_desc *dst, int zerocopy)
             rxhead = nm_ring_next(rxring, rxhead);
         }
         /* Update state of netmap ring. */
-	rxring->head = rxring->cur = rxhead;
-	txring->head = txring->cur = txhead;
+        rxring->head = rxring->cur = rxhead;
+        txring->head = txring->cur = txhead;
     }
 }
 #endif /* SOLUTION */
@@ -176,8 +176,8 @@ main_loop(const char *netmap_port_one, const char *netmap_port_two)
         struct pollfd pfd[2];
         int ret;
 
-        pfd[0].fd = nmd_one->fd;
-        pfd[1].fd = nmd_two->fd;
+        pfd[0].fd     = nmd_one->fd;
+        pfd[1].fd     = nmd_two->fd;
         pfd[0].events = 0;
         pfd[1].events = 0;
         if (!rx_ready(nmd_one)) {
@@ -289,7 +289,7 @@ main(int argc, char **argv)
 
     main_loop(netmap_port_one, netmap_port_two);
 
-    (void) pkt_udp_port_swap;
+    (void)pkt_udp_port_swap;
 
     return 0;
 }
