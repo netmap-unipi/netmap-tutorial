@@ -118,17 +118,18 @@ main_loop(const char *netmap_port_one, const char *netmap_port_two,
 
     while (!stop) {
         struct pollfd pfd[2];
+
         pfd[0].fd     = nmd_one->fd;
-        pfd[0].events = 0;
         pfd[1].fd     = nmd_two->fd;
+        pfd[0].events = 0;
         pfd[1].events = 0;
-        /* if port one has RX packets then
+        /* TODO: if port one has RX packets then
          * POLLOUT on port two else POLLIN on
          * port one */
 
         poll(pfd, 2, 1000);
 
-        /* try to copy as many packets as possible
+        /* TODO: try to copy as many packets as possible
          * from port 1 to port 2
          */
     }
