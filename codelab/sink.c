@@ -33,7 +33,7 @@ static inline int
 udp_port_match(const char *buf, unsigned len, int udp_port)
 {
     struct ether_header *ethh;
-    struct iphdr *iph;
+    struct ip *iph;
     struct udphdr *udph;
 
     ethh = (struct ether_header *)buf;
@@ -41,8 +41,8 @@ udp_port_match(const char *buf, unsigned len, int udp_port)
         /* Filter out non-IP traffic. */
         return 0;
     }
-    iph = (struct iphdr *)(ethh + 1);
-    if (iph->protocol != IPPROTO_UDP) {
+    iph = (struct ip *)(ethh + 1);
+    if (iph->ip_p != IPPROTO_UDP) {
         /* Filter out non-UDP traffic. */
         return 0;
     }
