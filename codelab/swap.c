@@ -189,5 +189,7 @@ main(int argc, char **argv)
 
     main_loop(netmap_port_one, netmap_port_two);
 
+    (void) pkt_udp_port_swap;
+
     return 0;
 }
