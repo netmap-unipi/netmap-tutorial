@@ -20,7 +20,7 @@
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 
-static int stop = 0;
+static int stop               = 0;
 static unsigned long long fwd = 0;
 static unsigned long long tot = 0;
 
@@ -35,13 +35,13 @@ rx_ready(struct nm_desc *nmd)
 {
     unsigned int ri;
 
-    for (ri = nmd->first_rx_ring; ri <= nmd->last_rx_ring; ri ++) {
-            struct netmap_ring *ring;
+    for (ri = nmd->first_rx_ring; ri <= nmd->last_rx_ring; ri++) {
+        struct netmap_ring *ring;
 
-            ring = NETMAP_RXRING(nmd->nifp, ri);
-            if (nm_ring_space(ring)) {
-                return 1; /* there is something to read */
-            }
+        ring = NETMAP_RXRING(nmd->nifp, ri);
+        if (nm_ring_space(ring)) {
+            return 1; /* there is something to read */
+        }
     }
 
     return 0;
@@ -78,9 +78,9 @@ pkt_select(const char *buf, int udp_port)
     return 1;
 }
 
-
 static int
-main_loop(const char *netmap_port_one, const char *netmap_port_two, int udp_port)
+main_loop(const char *netmap_port_one, const char *netmap_port_two,
+          int udp_port)
 {
     struct nm_desc *nmd_one;
     struct nm_desc *nmd_two;
@@ -115,18 +115,18 @@ main_loop(const char *netmap_port_one, const char *netmap_port_two, int udp_port
     printf("zerocopy %sabled\n", zerocopy ? "en" : "dis");
 
     while (!stop) {
-	struct pollfd pfd[2];
-        pfd[0].fd = nmd_one->fd;
-	pfd[0].events = 0;
-        pfd[1].fd = nmd_two->fd;
-	pfd[1].events = 0;
-	/* if port one has RX packets then
-	 * POLLOUT on port two else POLLIN on
+        struct pollfd pfd[2];
+        pfd[0].fd     = nmd_one->fd;
+        pfd[0].events = 0;
+        pfd[1].fd     = nmd_two->fd;
+        pfd[1].events = 0;
+        /* if port one has RX packets then
+         * POLLOUT on port two else POLLIN on
          * port one */
 
         poll(pfd, 2, 1000);
 
-	/* try to copy as many packets as possible
+        /* try to copy as many packets as possible
          * from port 1 to port 2
          */
     }
@@ -144,7 +144,8 @@ static void
 usage(char **argv)
 {
     printf("usage: %s [-h] [-p UDP_PORT] [-i NETMAP_PORT_ONE] "
-           "[-i NETMAP_PORT_TWO]\n", argv[0]);
+           "[-i NETMAP_PORT_TWO]\n",
+           argv[0]);
     exit(EXIT_SUCCESS);
 }
 
@@ -153,37 +154,37 @@ main(int argc, char **argv)
 {
     const char *netmap_port_one = NULL;
     const char *netmap_port_two = NULL;
-    int udp_port = 0; /* zero means select everything */
+    int udp_port                = 0; /* zero means select everything */
     struct sigaction sa;
     int opt;
     int ret;
 
     while ((opt = getopt(argc, argv, "hi:p:")) != -1) {
         switch (opt) {
-            case 'h':
+        case 'h':
+            usage(argv);
+            return 0;
+
+        case 'i':
+            if (netmap_port_one == NULL) {
+                netmap_port_one = optarg;
+            } else if (netmap_port_two == NULL) {
+                netmap_port_two = optarg;
+            }
+            break;
+
+        case 'p':
+            udp_port = atoi(optarg);
+            if (udp_port < 0 || udp_port >= 65535) {
+                printf("    invalid UDP port %s\n", optarg);
                 usage(argv);
-                return 0;
+            }
+            break;
 
-            case 'i':
-                if (netmap_port_one == NULL) {
-                    netmap_port_one = optarg;
-                } else if (netmap_port_two == NULL) {
-                    netmap_port_two = optarg;
-                }
-                break;
-
-            case 'p':
-                udp_port = atoi(optarg);
-                if (udp_port < 0 || udp_port >= 65535) {
-                    printf("    invalid UDP port %s\n", optarg);
-                    usage(argv);
-                }
-                break;
-
-            default:
-                printf("    unrecognized option '-%c'\n", opt);
-                usage(argv);
-                return -1;
+        default:
+            printf("    unrecognized option '-%c'\n", opt);
+            usage(argv);
+            return -1;
         }
     }
 
@@ -201,7 +202,7 @@ main(int argc, char **argv)
     sa.sa_handler = sigint_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
-    ret = sigaction(SIGINT, &sa, NULL);
+    ret         = sigaction(SIGINT, &sa, NULL);
     if (ret) {
         perror("sigaction(SIGINT)");
         exit(EXIT_FAILURE);

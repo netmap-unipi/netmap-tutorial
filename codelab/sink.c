@@ -76,33 +76,33 @@ int
 main(int argc, char **argv)
 {
     const char *netmap_port = NULL;
-    int udp_port = 8000;
+    int udp_port            = 8000;
     struct sigaction sa;
     int opt;
     int ret;
 
     while ((opt = getopt(argc, argv, "hi:p:")) != -1) {
         switch (opt) {
-            case 'h':
+        case 'h':
+            usage(argv);
+            return 0;
+
+        case 'i':
+            netmap_port = optarg;
+            break;
+
+        case 'p':
+            udp_port = atoi(optarg);
+            if (udp_port <= 0 || udp_port >= 65535) {
+                printf("    invalid UDP port %s\n", optarg);
                 usage(argv);
-                return 0;
+            }
+            break;
 
-            case 'i':
-                netmap_port = optarg;
-                break;
-
-            case 'p':
-                udp_port = atoi(optarg);
-                if (udp_port <= 0 || udp_port >= 65535) {
-                    printf("    invalid UDP port %s\n", optarg);
-                    usage(argv);
-                }
-                break;
-
-            default:
-                printf("    unrecognized option '-%c'\n", opt);
-                usage(argv);
-                return -1;
+        default:
+            printf("    unrecognized option '-%c'\n", opt);
+            usage(argv);
+            return -1;
         }
     }
 
@@ -115,7 +115,7 @@ main(int argc, char **argv)
     sa.sa_handler = sigint_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
-    ret = sigaction(SIGINT, &sa, NULL);
+    ret         = sigaction(SIGINT, &sa, NULL);
     if (ret) {
         perror("sigaction(SIGINT)");
         exit(EXIT_FAILURE);
