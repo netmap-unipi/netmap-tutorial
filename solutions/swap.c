@@ -15,14 +15,16 @@
 #include <net/netmap.h>
 #define NETMAP_WITH_LIBS
 #include <net/netmap_user.h>
-#include <netinet/ether.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/if_ether.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 
-static int stop = 0;
+static int stop                   = 0;
 static unsigned long long swapped = 0;
-static unsigned long long tot = 0;
+static unsigned long long tot     = 0;
 
 static void
 sigint_handler(int signum)
@@ -35,13 +37,13 @@ rx_ready(struct nm_desc *nmd)
 {
     unsigned int ri;
 
-    for (ri = nmd->first_rx_ring; ri <= nmd->last_rx_ring; ri ++) {
-            struct netmap_ring *ring;
+    for (ri = nmd->first_rx_ring; ri <= nmd->last_rx_ring; ri++) {
+        struct netmap_ring *ring;
 
-            ring = NETMAP_RXRING(nmd->nifp, ri);
-            if (nm_ring_space(ring)) {
-                return 1; /* there is something to read */
-            }
+        ring = NETMAP_RXRING(nmd->nifp, ri);
+        if (nm_ring_space(ring)) {
+            return 1; /* there is something to read */
+        }
     }
 
     return 0;
@@ -53,7 +55,7 @@ static inline int
 pkt_udp_port_swap(char *buf)
 {
     struct ether_header *ethh;
-    struct iphdr *iph;
+    struct ip *iph;
     struct udphdr *udph;
     uint16_t tmp;
 
@@ -62,15 +64,15 @@ pkt_udp_port_swap(char *buf)
         /* Filter out non-IP traffic. */
         return 0;
     }
-    iph = (struct iphdr *)(ethh + 1);
-    if (iph->protocol != IPPROTO_UDP) {
+    iph = (struct ip *)(ethh + 1);
+    if (iph->ip_p != IPPROTO_UDP) {
         /* Filter out non-UDP traffic. */
         return 0;
     }
-    udph = (struct udphdr *)(iph + 1);
-    tmp = udph->source;
-    udph->source = udph->dest;
-    udph->dest = tmp;
+    udph           = (struct udphdr *)(iph + 1);
+    tmp            = udph->uh_sport;
+    udph->uh_sport = udph->uh_dport;
+    udph->uh_dport = tmp;
 
     return 1;
 }
@@ -226,7 +228,8 @@ static void
 usage(char **argv)
 {
     printf("usage: %s [-h] [-i NETMAP_PORT_ONE] "
-           "[-i NETMAP_PORT_TWO]\n", argv[0]);
+           "[-i NETMAP_PORT_TWO]\n",
+           argv[0]);
     exit(EXIT_SUCCESS);
 }
 
@@ -241,22 +244,22 @@ main(int argc, char **argv)
 
     while ((opt = getopt(argc, argv, "hi:p:")) != -1) {
         switch (opt) {
-            case 'h':
-                usage(argv);
-                return 0;
+        case 'h':
+            usage(argv);
+            return 0;
 
-            case 'i':
-                if (netmap_port_one == NULL) {
-                    netmap_port_one = optarg;
-                } else if (netmap_port_two == NULL) {
-                    netmap_port_two = optarg;
-                }
-                break;
+        case 'i':
+            if (netmap_port_one == NULL) {
+                netmap_port_one = optarg;
+            } else if (netmap_port_two == NULL) {
+                netmap_port_two = optarg;
+            }
+            break;
 
-            default:
-                printf("    unrecognized option '-%c'\n", opt);
-                usage(argv);
-                return -1;
+        default:
+            printf("    unrecognized option '-%c'\n", opt);
+            usage(argv);
+            return -1;
         }
     }
 
@@ -274,7 +277,7 @@ main(int argc, char **argv)
     sa.sa_handler = sigint_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
-    ret = sigaction(SIGINT, &sa, NULL);
+    ret         = sigaction(SIGINT, &sa, NULL);
     if (ret) {
         perror("sigaction(SIGINT)");
         exit(EXIT_FAILURE);
@@ -285,6 +288,8 @@ main(int argc, char **argv)
     printf("Port two: %s\n", netmap_port_two);
 
     main_loop(netmap_port_one, netmap_port_two);
+
+    (void) pkt_udp_port_swap;
 
     return 0;
 }

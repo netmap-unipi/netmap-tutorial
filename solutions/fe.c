@@ -18,16 +18,18 @@
 #include <net/netmap.h>
 #define NETMAP_WITH_LIBS
 #include <net/netmap_user.h>
-#include <netinet/ether.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/if_ether.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 
-static int stop = 0;
+static int stop                   = 0;
 static unsigned long long fwdback = 0;
-static unsigned long long fwda = 0;
-static unsigned long long fwdb = 0;
-static unsigned long long tot = 0;
+static unsigned long long fwda    = 0;
+static unsigned long long fwdb    = 0;
+static unsigned long long tot     = 0;
 
 static void
 sigint_handler(int signum)
@@ -40,13 +42,13 @@ rx_ready(struct nm_desc *nmd)
 {
     unsigned int ri;
 
-    for (ri = nmd->first_rx_ring; ri <= nmd->last_rx_ring; ri ++) {
-            struct netmap_ring *ring;
+    for (ri = nmd->first_rx_ring; ri <= nmd->last_rx_ring; ri++) {
+        struct netmap_ring *ring;
 
-            ring = NETMAP_RXRING(nmd->nifp, ri);
-            if (nm_ring_space(ring)) {
-                return 1; /* there is something to read */
-            }
+        ring = NETMAP_RXRING(nmd->nifp, ri);
+        if (nm_ring_space(ring)) {
+            return 1; /* there is something to read */
+        }
     }
 
     return 0;
@@ -56,7 +58,7 @@ static inline int
 pkt_get_udp_port(const char *buf)
 {
     struct ether_header *ethh;
-    struct iphdr *iph;
+    struct ip *iph;
     struct udphdr *udph;
 
     ethh = (struct ether_header *)buf;
@@ -64,15 +66,15 @@ pkt_get_udp_port(const char *buf)
         /* Filter out non-IP traffic. */
         return 0;
     }
-    iph = (struct iphdr *)(ethh + 1);
-    if (iph->protocol != IPPROTO_UDP) {
+    iph = (struct ip *)(ethh + 1);
+    if (iph->ip_p != IPPROTO_UDP) {
         /* Filter out non-UDP traffic. */
         return 0;
     }
     udph = (struct udphdr *)(iph + 1);
 
     /* Return destination port. */
-    return ntohs(udph->dest);
+    return ntohs(udph->uh_dport);
 }
 
 #ifdef SOLUTION
@@ -148,8 +150,8 @@ forward_pkts(struct nm_desc *src, struct nm_desc *dst)
 
         rxring = NETMAP_RXRING(src->nifp, si);
         txring = NETMAP_TXRING(dst->nifp, di);
-        nrx = nm_ring_space(rxring);
-        ntx = nm_ring_space(txring);
+        nrx    = nm_ring_space(rxring);
+        ntx    = nm_ring_space(txring);
         if (nrx == 0) {
             si++;
             continue;
@@ -159,25 +161,25 @@ forward_pkts(struct nm_desc *src, struct nm_desc *dst)
             continue;
         }
 
-	rxhead = rxring->head;
-	txhead = txring->head;
-	for (; nrx > 0 && ntx > 0;
-               nrx --, rxhead = nm_ring_next(rxring, rxhead), tot ++) {
+        rxhead = rxring->head;
+        txhead = txring->head;
+        for (; nrx > 0 && ntx > 0;
+             nrx--, rxhead = nm_ring_next(rxring, rxhead), tot++) {
             struct netmap_slot *rs = &rxring->slot[rxhead];
             struct netmap_slot *ts = &txring->slot[txhead];
-            char *rxbuf = NETMAP_BUF(rxring, rs->buf_idx);
-            char *txbuf = NETMAP_BUF(txring, ts->buf_idx);
+            char *rxbuf            = NETMAP_BUF(rxring, rs->buf_idx);
+            char *txbuf            = NETMAP_BUF(txring, ts->buf_idx);
 
             ts->len = rs->len;
             memcpy(txbuf, rxbuf, ts->len);
             txhead = nm_ring_next(txring, txhead);
-            ntx --;
-            fwdback ++;
-            tot ++;
+            ntx--;
+            fwdback++;
+            tot++;
         }
         /* Update state of netmap ring. */
-	rxring->head = rxring->cur = rxhead;
-	txring->head = txring->cur = txhead;
+        rxring->head = rxring->cur = rxhead;
+        txring->head = txring->cur = txhead;
     }
 }
 
@@ -192,11 +194,11 @@ main_loop(const char *netmap_port_one, const char *netmap_port_two,
     nmd_one = nm_open(netmap_port_one, NULL, 0, NULL);
     if (nmd_one == NULL) {
         if (!errno) {
-          printf("Failed to nm_open(%s): not a netmap port\n",
-                 netmap_port_one);
+            printf("Failed to nm_open(%s): not a netmap port\n",
+                   netmap_port_one);
         } else {
-          printf("Failed to nm_open(%s): %s\n", netmap_port_one,
-                 strerror(errno));
+            printf("Failed to nm_open(%s): %s\n", netmap_port_one,
+                   strerror(errno));
         }
         return -1;
     }
@@ -217,7 +219,7 @@ main_loop(const char *netmap_port_one, const char *netmap_port_two,
     if (nmd_three == NULL) {
         if (!errno) {
             printf("Failed to nm_open(%s): not a netmap port\n",
-                    netmap_port_three);
+                   netmap_port_three);
         } else {
             printf("Failed to nm_open(%s): %s\n", netmap_port_three,
                    strerror(errno));
@@ -294,19 +296,20 @@ usage(char **argv)
 {
     printf("usage: %s [-h] [-i NETMAP_PORT_ONE] "
            "[-i NETMAP_PORT_TWO] [-i NETMAP_PORT_THREE] "
-           "[-p UDP_PORT_A] [-p UDP_PORT_B]\n", argv[0]);
+           "[-p UDP_PORT_A] [-p UDP_PORT_B]\n",
+           argv[0]);
     exit(EXIT_SUCCESS);
 }
 
 int
 main(int argc, char **argv)
 {
-    const char *netmap_port_one = NULL;
-    const char *netmap_port_two = NULL;
+    const char *netmap_port_one   = NULL;
+    const char *netmap_port_two   = NULL;
     const char *netmap_port_three = NULL;
     int udp_port;
-    int udp_port_a = 8000;
-    int udp_port_b = 8001;
+    int udp_port_a    = 8000;
+    int udp_port_b    = 8001;
     int udp_port_args = 0;
     struct sigaction sa;
     int opt;
@@ -314,41 +317,41 @@ main(int argc, char **argv)
 
     while ((opt = getopt(argc, argv, "hi:p:")) != -1) {
         switch (opt) {
-            case 'h':
+        case 'h':
+            usage(argv);
+            return 0;
+
+        case 'i':
+            if (netmap_port_one == NULL) {
+                netmap_port_one = optarg;
+            } else if (netmap_port_two == NULL) {
+                netmap_port_two = optarg;
+            } else if (netmap_port_three == NULL) {
+                netmap_port_three = optarg;
+            }
+            break;
+
+        case 'p':
+            udp_port = atoi(optarg);
+            if (udp_port <= 0 || udp_port >= 65535) {
+                printf("    invalid UDP port %s\n", optarg);
                 usage(argv);
-                return 0;
-
-            case 'i':
-                if (netmap_port_one == NULL) {
-                    netmap_port_one = optarg;
-                } else if (netmap_port_two == NULL) {
-                    netmap_port_two = optarg;
-                } else if (netmap_port_three == NULL) {
-                    netmap_port_three = optarg;
-                }
+            }
+            switch (udp_port_args) {
+            case 0:
+                udp_port_a = udp_port;
                 break;
-
-            case 'p':
-                udp_port = atoi(optarg);
-                if (udp_port <= 0 || udp_port >= 65535) {
-                    printf("    invalid UDP port %s\n", optarg);
-                    usage(argv);
-                }
-                switch (udp_port_args) {
-                case 0:
-                    udp_port_a = udp_port;
-                    break;
-                case 1:
-                    udp_port_b = udp_port;
-                    break;
-                }
-                udp_port_args ++;
+            case 1:
+                udp_port_b = udp_port;
                 break;
+            }
+            udp_port_args++;
+            break;
 
-            default:
-                printf("    unrecognized option '-%c'\n", opt);
-                usage(argv);
-                return -1;
+        default:
+            printf("    unrecognized option '-%c'\n", opt);
+            usage(argv);
+            return -1;
         }
     }
 
@@ -366,7 +369,7 @@ main(int argc, char **argv)
     sa.sa_handler = sigint_handler;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
-    ret = sigaction(SIGINT, &sa, NULL);
+    ret         = sigaction(SIGINT, &sa, NULL);
     if (ret) {
         perror("sigaction(SIGINT)");
         exit(EXIT_FAILURE);
@@ -379,8 +382,10 @@ main(int argc, char **argv)
     printf("UDP port A: %d\n", udp_port_a);
     printf("UDP port B: %d\n", udp_port_b);
 
-    main_loop(netmap_port_one, netmap_port_two, netmap_port_three,
-              udp_port_a, udp_port_b);
+    main_loop(netmap_port_one, netmap_port_two, netmap_port_three, udp_port_a,
+              udp_port_b);
+
+    (void) pkt_get_udp_port;
 
     return 0;
 }
