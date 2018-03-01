@@ -1,4 +1,3 @@
-CC=gcc
 CFLAGS=-Wall -g -Werror -DSOLUTION
 PROGS=sink forward swap fe
 
@@ -10,4 +9,4 @@ swap: swap.o
 fe: fe.o
 
 clean:
-	-rm *.o $(PROGS)
+	-rm -f *.o $(PROGS)
