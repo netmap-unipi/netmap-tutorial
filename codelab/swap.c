@@ -15,7 +15,9 @@
 #include <net/netmap.h>
 #define NETMAP_WITH_LIBS
 #include <net/netmap_user.h>
-#include <netinet/ether.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/if_ether.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
@@ -53,7 +55,7 @@ static inline int
 pkt_udp_port_swap(char *buf)
 {
     struct ether_header *ethh;
-    struct iphdr *iph;
+    struct ip *iph;
     struct udphdr *udph;
     uint16_t tmp;
 
@@ -62,15 +64,15 @@ pkt_udp_port_swap(char *buf)
         /* Filter out non-IP traffic. */
         return 0;
     }
-    iph = (struct iphdr *)(ethh + 1);
-    if (iph->protocol != IPPROTO_UDP) {
+    iph = (struct ip *)(ethh + 1);
+    if (iph->ip_p != IPPROTO_UDP) {
         /* Filter out non-UDP traffic. */
         return 0;
     }
     udph         = (struct udphdr *)(iph + 1);
-    tmp          = udph->source;
-    udph->source = udph->dest;
-    udph->dest   = tmp;
+    tmp          = udph->uh_sport;
+    udph->uh_sport = udph->uh_dport;
+    udph->uh_dport   = tmp;
 
     return 1;
 }
