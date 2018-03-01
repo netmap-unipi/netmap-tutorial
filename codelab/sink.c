@@ -21,6 +21,7 @@
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 
+
 static int stop = 0;
 
 static void
@@ -49,7 +50,7 @@ udp_port_match(const char *buf, unsigned len, int udp_port)
     udph = (struct udphdr *)(iph + 1);
 
     /* Match the destination port. */
-    if (udph->dest == htons(udp_port)) {
+    if (udph->uh_dport == htons(udp_port)) {
         return 1;
     }
 
