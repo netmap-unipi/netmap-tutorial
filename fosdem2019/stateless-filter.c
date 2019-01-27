@@ -25,6 +25,10 @@
 #include <assert.h>
 #include <arpa/inet.h>
 
+/* You can undef MULTIRING to get the simpler code, which assumes
+ * that each netmap port has a single RX ring and a single TX ring. */
+#define MULTIRING
+
 static int			stop = 0;
 static unsigned long long	fwd = 0;
 static unsigned long long	tot = 0;
@@ -43,23 +47,6 @@ struct filtrule {
 	uint8_t ip_proto;
 	uint8_t pad;
 };
-
-static inline int
-rx_ready(struct nm_desc *nmd)
-{
-	unsigned int ri;
-
-	for (ri = nmd->first_rx_ring; ri <= nmd->last_rx_ring; ri++) {
-		struct netmap_ring *ring;
-
-		ring = NETMAP_RXRING(nmd->nifp, ri);
-		if (nm_ring_space(ring)) {
-			return 1; /* there is something to read */
-		}
-	}
-
-	return 0;
-}
 
 static inline int
 pkt_select(const char *buf, struct filtrule *rules,
@@ -96,6 +83,7 @@ static void
 forward_pkts(struct nm_desc *src, struct nm_desc *dst, struct filtrule *rules,
 		int num_rules, int zerocopy)
 {
+#ifdef MULTIRING
 	unsigned int si = src->first_rx_ring;
 	unsigned int di = dst->first_tx_ring;
 
@@ -146,10 +134,69 @@ forward_pkts(struct nm_desc *src, struct nm_desc *dst, struct filtrule *rules,
 			ntx--;
 			fwd++;
 		}
-		/* Update state of netmap ring. */
+		/* Update the pointers in the netmap rings. */
 		rxring->head = rxring->cur = rxhead;
 		txring->head = txring->cur = txhead;
 	}
+#else  /* !MULTIRING */
+	struct netmap_ring *txring;
+	struct netmap_ring *rxring;
+	unsigned int rxhead, txhead;
+
+	rxring = NETMAP_RXRING(src->nifp, 0);
+	txring = NETMAP_TXRING(dst->nifp, 0);
+
+	for (rxhead = rxring->head, txhead = txring->head;
+			rxhead != rxring->tail; tot++,
+				rxhead = nm_ring_next(rxring, rxhead)) {
+		struct netmap_slot *rs = &rxring->slot[rxhead];
+		struct netmap_slot *ts = &txring->slot[txhead];
+		char *rxbuf            = NETMAP_BUF(rxring, rs->buf_idx);
+
+		if (rules && !pkt_select(rxbuf, rules, num_rules)) {
+			continue; /* discard */
+		}
+
+		ts->len = rs->len;
+		if (zerocopy) {
+			uint32_t idx = ts->buf_idx;
+			ts->buf_idx  = rs->buf_idx;
+			rs->buf_idx  = idx;
+			/* report the buffer change. */
+			ts->flags |= NS_BUF_CHANGED;
+			rs->flags |= NS_BUF_CHANGED;
+		} else {
+			char *txbuf = NETMAP_BUF(txring, ts->buf_idx);
+			memcpy(txbuf, rxbuf, ts->len);
+		}
+		txhead = nm_ring_next(txring, txhead);
+		fwd++;
+	}
+	/* Update the pointers in the netmap rings. */
+	rxring->head = rxring->cur = rxhead;
+	txring->head = txring->cur = txhead;
+#endif /* !MULTIRING */
+}
+
+static inline int
+rx_ready(struct nm_desc *nmd)
+{
+#ifdef MULTIRING
+	unsigned int ri;
+
+	for (ri = nmd->first_rx_ring; ri <= nmd->last_rx_ring; ri++) {
+		struct netmap_ring *ring;
+
+		ring = NETMAP_RXRING(nmd->nifp, ri);
+		if (nm_ring_space(ring)) {
+			return 1; /* there is something to read */
+		}
+	}
+
+	return 0;
+#else  /* !MULTIRING */
+	return nm_ring_space(NETMAP_RXRING(nmd->nifp, 0));
+#endif /* !MULTIRING */
 }
 
 static int
