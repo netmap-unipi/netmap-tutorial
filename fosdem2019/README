@@ -6,19 +6,88 @@ This file contains instructions on how to run the example, step by step.
 
 Requirements:
 	- Linux (host) machine with KVM enabled
-	- Linux VM, or FreeBSD VM (with FreeBSD >= 12.x)
+	- QEMU Virtual Machine, running Linux or FreeBSD >= 12.x
 
-### Step 1: Build and install netmap and qemu on the host machine
+### Step 1: Build, install and load netmap on the host machine
 
-$ mkdir fosdem2019-netmap
-$ cd fosdem2019-netmap
-$ git clone https://github.com/luigirizzo/netmap
-$ cd netmap
-$ ./configure --no-drivers # patched drivers not necessary for this example
-$ make && sudo make install
-$ sudo insmod netmap.ko
-$ cd ..
-$ git clone https://github.com/netmap-unipi/qemu
-$ cd qemu
-$
+(host) $ mkdir fosdem2019-netmap
+(host) $ cd fosdem2019-netmap
+(host) $ git clone https://github.com/luigirizzo/netmap
+(host) $ cd netmap
+(host) $ ./configure --no-drivers # patched drivers not necessary for this example
+(host) $ make && sudo make install
+(host) $ sudo insmod netmap.ko
+(host) $ cd ..
 
+
+### Step 2: Build and install qemu on the host machine
+
+(host) $ git clone https://github.com/netmap-unipi/qemu
+(host) $ cd qemu
+(host) $ ./configure --target-list=x86_64-softmmu --enable-kvm --disable-werror --enable-netmap
+(host) $ make && sudo make install
+(host) $ cd ..
+
+
+### Step 3: Prepare the VM
+
+Install netmap in the VM (same as step 1, but inside the VM).
+Then, build the example:
+
+(vm) $ git clone https://github.com/netmap-unipi/netmap-tutorial
+(vm) $ cd netmap-tutorial/fosdem2019
+(vm) $ make
+
+
+### Step 4: Close the VM and re-launch it with two netmap pipe ports
+
+sudo qemu-system-x86_64 /path/to/qemu/vm/image.qcow2 -enable-kvm -smp 2 -m 2G -vga std -device e1000,netdev=mgmt,mac=00:AA:BB:CC:0a:99 -netdev user,id=mgmt,hostfwd=tcp::20010-:22 -device ptnet-pci,netdev=data10,mac=00:AA:BB:CC:0a:0a -netdev netmap,ifname=vale1:10}1,id=data10,passthrough=on -device ptnet-pci,netdev=data11,mac=00:AA:BB:CC:0a:0b -netdev netmap,ifname=vale1:10{2,id=data11,passthrough=on
+
+
+
+### Step 5: Access the VM and find the two passed-through interfaces
+
+First, load the netmap module:
+(vm) $ sudo insmod netmap
+
+On Linux, a list of passed-through netmap ports can be obtained in this way:
+(vm) for if in $(ls /sys/class/net); do ethtool -i $if | grep -qq ptnetmap && echo "ptnetmap if: $if"; done
+
+On FreeBSD, just run "ifconfig" and look for "ptnetX" interfaces.
+
+
+### Step 6: Run the example application
+
+Run the filter with a rule to pass TCP/UDP traffic towards
+10.10.10.0/24, port 7777:
+
+(vm) $ cd netmap/tutorial/fosdem2019
+(vm) $ sudo ./stateless-filter -e eth1 -i eth2 -p 10.10.10.0/24:0:7777
+
+
+### Step 7: Inject traffic into the VM
+
+Send UDP traffic (with matching destination IP and port) into the other
+end of the pipe corresponding to the EXT port:
+
+(host) pkt-gen -i vale1:10{1 -f tx -d 10.10.10.23:7777
+
+
+### Step 8: Capture traffic forwarded from the VM
+
+Receive traffic from the other end of the pipe corresponding the INT
+port:
+(host) pkt-gen -i vale1:10}2 -f rx
+
+
+
+### More experiments:
+
+1. Restart the filter, changing the rule to pass only port 80, and check
+   that no traffic is forwarded:
+(vm) $ sudo ./stateless-filter -e eth1 -i eth2 -p 10.10.10.0/24:0:80
+
+2. Try with bidirectional traffic, replacing "-f tx" with "-f ping",
+   and "-f rx" with "-f pong".
+
+3. Add more pass rule or use a pass-any rule ("0.0.0.0/0:0:0").
