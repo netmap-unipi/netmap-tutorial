@@ -391,7 +391,6 @@ main(int argc, char **argv)
 				usage(argv);
 			}
 			free(copy);
-			printf("<%08x/%d> <%d> <%d>\n", ip.s_addr, mask, proto, port);
 
 			if (num_rules >= MAXRULES) {
 				printf("    too many rules, bailing out\n");
@@ -437,8 +436,9 @@ main(int argc, char **argv)
 
 	printf("External port: %s\n", ext_port_name);
 	printf("Internal port: %s\n", int_port_name);
+	printf("Rules:\n");
 	for (i = 0; i < num_rules; i++) {
-		printf("    rule: ip_daddr 0x%08x/0x%08x ip_proto %u "
+		printf("    pass ip_daddr 0x%08x/0x%08x ip_proto %u "
 			"dport %u\n",
 			ntohl(rules[i].ip_daddr), ntohl(rules[i].ip_mask),
 			rules[i].ip_proto, ntohs(rules[i].dport));
