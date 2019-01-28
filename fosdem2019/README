@@ -41,7 +41,7 @@ Then, build the example:
 
 ### Step 4: Close the VM and re-launch it with two netmap pipe ports
 
-sudo qemu-system-x86_64 /path/to/qemu/vm/image.qcow2 -enable-kvm -smp 2 -m 2G -vga std -device e1000,netdev=mgmt,mac=00:AA:BB:CC:0a:99 -netdev user,id=mgmt,hostfwd=tcp::20010-:22 -device ptnet-pci,netdev=data10,mac=00:AA:BB:CC:0a:0a -netdev netmap,ifname=vale1:10}1,id=data10,passthrough=on -device ptnet-pci,netdev=data11,mac=00:AA:BB:CC:0a:0b -netdev netmap,ifname=vale1:10{2,id=data11,passthrough=on
+(host) $ sudo qemu-system-x86_64 /path/to/qemu/vm/image.qcow2 -enable-kvm -smp 2 -m 2G -vga std -device e1000,netdev=mgmt,mac=00:AA:BB:CC:0a:99 -netdev user,id=mgmt,hostfwd=tcp::20010-:22 -device ptnet-pci,netdev=data10,mac=00:AA:BB:CC:0a:0a -netdev netmap,ifname=vale1:10}1,id=data10,passthrough=on -device ptnet-pci,netdev=data11,mac=00:AA:BB:CC:0a:0b -netdev netmap,ifname=vale1:10{2,id=data11,passthrough=on
 
 
 
@@ -51,9 +51,14 @@ First, load the netmap module:
 (vm) $ sudo insmod netmap
 
 On Linux, a list of passed-through netmap ports can be obtained in this way:
-(vm) for if in $(ls /sys/class/net); do ethtool -i $if | grep -qq ptnetmap && echo "ptnetmap if: $if"; done
+(vm) $ for if in $(ls /sys/class/net); do ethtool -i $if | grep -qq ptnetmap && echo "ptnetmap if: $if"; done
 
-On FreeBSD, just run "ifconfig" and look for "ptnetX" interfaces.
+Bring the interfaces up, e.g.:
+(vm) $ sudo ip link set $if up
+
+On FreeBSD, just run "ifconfig" and look for "ptnet*" interfaces, e.g.:
+(vm) $ sudo ifconfig ptnet0 up
+(vm) $ sudo ifconfig ptnet1 up
 
 
 ### Step 6: Run the example application
@@ -62,30 +67,29 @@ Run the filter with a rule to pass TCP/UDP traffic towards
 10.10.10.0/24, port 7777:
 
 (vm) $ cd netmap/tutorial/fosdem2019
-(vm) $ sudo ./stateless-filter -e eth1 -i eth2 -p 10.10.10.0/24:0:7777
+(vm) $ sudo ./stateless-filter netmap:eth1 -i netmap:eth2 -p 10.10.10.0/24:0:7777
 
 
-### Step 7: Inject traffic into the VM
+### Step 7: Capture traffic forwarded from the VM
+
+Receive traffic from the other end of the pipe corresponding the INT
+port:
+(host) # pkt-gen -i vale1:10}2 -f rx
+
+
+### Step 8: Inject traffic into the VM
 
 Send UDP traffic (with matching destination IP and port) into the other
 end of the pipe corresponding to the EXT port:
 
-(host) pkt-gen -i vale1:10{1 -f tx -d 10.10.10.23:7777
-
-
-### Step 8: Capture traffic forwarded from the VM
-
-Receive traffic from the other end of the pipe corresponding the INT
-port:
-(host) pkt-gen -i vale1:10}2 -f rx
-
+(host) # pkt-gen -i vale1:10{1 -f tx -d 10.10.10.23:7777
 
 
 ### More experiments:
 
 1. Restart the filter, changing the rule to pass only port 80, and check
    that no traffic is forwarded:
-(vm) $ sudo ./stateless-filter -e eth1 -i eth2 -p 10.10.10.0/24:0:80
+(vm) $ sudo ./stateless-filter -e netmap:eth1 -i netmap:eth2 -p 10.10.10.0/24:0:80
 
 2. Try with bidirectional traffic, replacing "-f tx" with "-f ping",
    and "-f rx" with "-f pong".

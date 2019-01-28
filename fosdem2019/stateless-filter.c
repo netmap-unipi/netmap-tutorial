@@ -201,7 +201,7 @@ rx_ready(struct nm_desc *nmd)
 
 static int
 main_loop(const char *ext_port_name, const char *int_port_name,
-		struct filtrule *rules, int num_rules)
+		struct filtrule *rules, int num_rules, int force_copy)
 {
 	struct nm_desc *ext_port;
 	struct nm_desc *int_port;
@@ -232,7 +232,7 @@ main_loop(const char *ext_port_name, const char *int_port_name,
 	}
 
 	/* Check if we can do zerocopy. */
-	zerocopy = (ext_port->mem == int_port->mem);
+	zerocopy = !force_copy && (ext_port->mem == int_port->mem);
 	printf("zerocopy %sabled\n", zerocopy ? "en" : "dis");
 
 	while (!stop) {
@@ -282,6 +282,7 @@ main_loop(const char *ext_port_name, const char *int_port_name,
 
 	printf("Total processed packets: %llu\n", tot);
 	printf("Forwarded packets      : %llu\n", fwd);
+	printf("Dropped packets        : %llu\n", tot - fwd);
 
 	return 0;
 }
@@ -292,7 +293,9 @@ usage(char **argv)
 	printf("usage: %s [-h]\n"
 		"    [-p x.y.z.w/mask:proto:dport (pass rule)] [-p ... ]\n"
 		"    [-i INTERNAL_PORT]\n"
-		"    [-e EXTERNAL_PORT]\n\n"
+		"    [-e EXTERNAL_PORT]\n"
+		"    [-c (disable zerocopy if supported)]\n"
+		"\n"
 		"  Zero or more pass rules can be specified. A zero value for"
 		" mask, proto or dport means 'any'.\n",
 		argv[0]);
@@ -307,10 +310,11 @@ main(int argc, char **argv)
 	const char *ext_port_name = NULL;
 	const char *int_port_name = NULL;
 	struct sigaction sa;
+	int force_copy = 0;
 	int num_rules = 0;
 	int opt, ret, i;
 
-	while ((opt = getopt(argc, argv, "hi:e:p:")) != -1) {
+	while ((opt = getopt(argc, argv, "hi:e:p:c")) != -1) {
 		switch (opt) {
 		case 'h':
 			usage(argv);
@@ -407,6 +411,10 @@ main(int argc, char **argv)
 			break;
 		}
 
+		case 'c':
+			force_copy = 1;
+			break;
+
 		default:
 			printf("    unrecognized option '-%c'\n", opt);
 			usage(argv);
@@ -444,7 +452,7 @@ main(int argc, char **argv)
 			rules[i].ip_proto, ntohs(rules[i].dport));
 	}
 
-	main_loop(ext_port_name, int_port_name, rules, num_rules);
+	main_loop(ext_port_name, int_port_name, rules, num_rules, force_copy);
 
 	return 0;
 }
