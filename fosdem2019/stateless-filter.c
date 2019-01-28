@@ -49,8 +49,7 @@ struct filtrule {
 };
 
 static inline int
-pkt_select(const char *buf, struct filtrule *rules,
-		int num_rules)
+pkt_select(const char *buf, struct filtrule *rules, int num_rules)
 {
 	struct ether_header *ethh;
 	struct udphdr *udph;
@@ -72,7 +71,7 @@ pkt_select(const char *buf, struct filtrule *rules,
 			== rule->ip_daddr &&
 			(!rules->ip_proto || rule->ip_proto == iph->ip_p) &&
 			(!rule->dport || rule->dport == udph->uh_dport)) {
-			return 1;
+			return 1; /* select */
 		}
 	}
 
