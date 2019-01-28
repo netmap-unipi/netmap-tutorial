@@ -147,8 +147,8 @@ forward_pkts(struct nm_desc *src, struct nm_desc *dst, struct filtrule *rules,
 	txring = NETMAP_TXRING(dst->nifp, 0);
 
 	for (rxhead = rxring->head, txhead = txring->head;
-			rxhead != rxring->tail; tot++,
-				rxhead = nm_ring_next(rxring, rxhead)) {
+			rxhead != rxring->tail && txhead != txring->tail;
+				tot++, rxhead = nm_ring_next(rxring, rxhead)) {
 		struct netmap_slot *rs = &rxring->slot[rxhead];
 		struct netmap_slot *ts = &txring->slot[txhead];
 		char *rxbuf            = NETMAP_BUF(rxring, rs->buf_idx);
