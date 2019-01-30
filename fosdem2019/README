@@ -2,7 +2,7 @@
 
 URL: https://fosdem.org/2019/schedule/event/netmap_vnf_development/
 
-This file contains instructions on how to run the example, step by step.
+This file contains step-by-step instructions to run the example.
 
 Requirements:
 	- Linux (host) machine with KVM enabled
@@ -67,14 +67,14 @@ Run the filter with a rule to pass TCP/UDP traffic towards
 10.10.10.0/24, port 7777:
 
 (vm) $ cd netmap/tutorial/fosdem2019
-(vm) $ sudo ./stateless-filter netmap:eth1 -i netmap:eth2 -p 10.10.10.0/24:0:7777
+(vm) $ sudo ./stateless-filter -e netmap:eth1 -i netmap:eth2 -p 10.10.10.0/24:0:7777
 
 
 ### Step 7: Capture traffic forwarded from the VM
 
 Receive traffic from the other end of the pipe corresponding the INT
 port:
-(host) # pkt-gen -i vale1:10}2 -f rx
+(host) $ sudo pkt-gen -i vale1:10}2 -f rx
 
 
 ### Step 8: Inject traffic into the VM
@@ -82,7 +82,7 @@ port:
 Send UDP traffic (with matching destination IP and port) into the other
 end of the pipe corresponding to the EXT port:
 
-(host) # pkt-gen -i vale1:10{1 -f tx -d 10.10.10.23:7777
+(host) $ sudo pkt-gen -i vale1:10{1 -f tx -d 10.10.10.23:7777-10.10.10.129:7777
 
 
 ### More experiments:
