@@ -82,7 +82,7 @@ port:
 Send UDP traffic (with matching destination IP and port) into the other
 end of the pipe corresponding to the EXT port:
 
-(host) $ sudo pkt-gen -i vale1:10{1 -f tx -d 10.10.10.23:7777-10.10.10.129:7777
+(host) $ sudo pkt-gen -i vale1:10{1 -f tx -d 10.10.10.23:7777
 
 
 ### More experiments:
@@ -95,3 +95,6 @@ end of the pipe corresponding to the EXT port:
    and "-f rx" with "-f pong".
 
 3. Add more pass rule or use a pass-any rule ("0.0.0.0/0:0:0").
+
+4. Try with destination address and ports in a range
+(host) $ sudo pkt-gen -i vale1:10{1 -f tx -d 10.10.10.23:7777-10.10.10.129:7780
